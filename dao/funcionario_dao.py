@@ -1,33 +1,116 @@
-from conexao import conectar
+from database import get_connection
 
 class FuncionarioDAO:
 
-    def inserir(self,idPessoa):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute(
-                "INSERT INTO Funcionario (idPessoa) VALUES (%s)",
-                (idPessoa,)
-            )
+    def create(self, cargo, email_inst, id_pessoa):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO Funcionario (cargo, emailInstitucional, idPessoa)
+                    VALUES (%s, %s, %s)
+                """, (cargo, email_inst, id_pessoa))
 
-    def listar(self):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute("""
-                SELECT f.idFuncionario,p.nome
-                FROM Funcionario f
-                JOIN Pessoa p ON p.idPessoa=f.idPessoa
-            """)
-            return cur.fetchall()
+                conn.commit()
+                print("Funcionário cadastrado com sucesso!")
 
-    def atualizar(self,idFuncionario,idPessoa):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute(
-                "UPDATE Funcionario SET idPessoa=%s WHERE idFuncionario=%s",
-                (idPessoa,idFuncionario)
-            )
+        except Exception as e:
+            print(f"Erro ao cadastrar funcionário: {e}")
 
-    def excluir(self,idFuncionario):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute(
-                "DELETE FROM Funcionario WHERE idFuncionario=%s",
-                (idFuncionario,)
-            )
+        finally:
+            conn.close()
+
+    def read(self):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        f.idFuncionario,
+                        p.nome,
+                        f.cargo,
+                        f.emailInstitucional
+                    FROM Funcionario f
+                    JOIN Pessoa p ON f.idPessoa = p.idPessoa
+                    ORDER BY f.idFuncionario
+                """)
+                return cursor.fetchall()
+
+        finally:
+            conn.close()
+
+    def update(self, id_func, cargo, email_inst):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+
+                cursor.execute(
+                    "SELECT idPessoa FROM Funcionario WHERE idFuncionario = %s",
+                    (id_func,)
+                )
+
+                resultado = cursor.fetchone()
+
+                if not resultado:
+                    print("Funcionário não encontrado!")
+                    return
+
+                cursor.execute("""
+                    UPDATE Funcionario
+                    SET cargo = %s,
+                        emailInstitucional = %s
+                    WHERE idFuncionario = %s
+                """, (cargo, email_inst, id_func))
+
+                conn.commit()
+                print("Funcionário atualizado com sucesso!")
+
+        except Exception as e:
+            print(f"Erro ao atualizar funcionário: {e}")
+
+        finally:
+            conn.close()
+
+    def delete(self, id_func):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM Funcionario WHERE idFuncionario = %s",
+                    (id_func,)
+                )
+
+                if cursor.rowcount == 0:
+                    print("Funcionário não encontrado!")
+                else:
+                    conn.commit()
+                    print("Funcionário deletado com sucesso!")
+
+        except Exception as e:
+            print(f"Erro ao deletar funcionário: {e}")
+
+        finally:
+            conn.close()
+
+    def find_by_id(self, id_func):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        f.idFuncionario,
+                        p.idPessoa,
+                        p.nome,
+                        p.cpf,
+                        p.email,
+                        f.cargo,
+                        f.emailInstitucional
+                    FROM Funcionario f
+                    JOIN Pessoa p ON f.idPessoa = p.idPessoa
+                    WHERE f.idFuncionario = %s
+                """, (id_func,))
+
+                return cursor.fetchone()
+
+        finally:
+            conn.close()

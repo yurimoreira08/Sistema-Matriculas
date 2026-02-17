@@ -1,33 +1,112 @@
-from conexao import conectar
+from database import get_connection
 
 class TurmaDAO:
 
-    def inserir(self,ano,idCurso):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute(
-                "INSERT INTO Turma (ano,idCurso) VALUES (%s,%s)",
-                (ano,idCurso)
-            )
+    def create(self, periodo, ano, horario, id_curso):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO Turma (periodo, ano, horario, idCurso)
+                    VALUES (%s, %s, %s, %s)
+                """, (periodo, ano, horario, id_curso))
 
-    def listar(self):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute("""
-                SELECT t.idTurma,t.ano,c.nome
-                FROM Turma t
-                JOIN Curso c ON c.idCurso=t.idCurso
-            """)
-            return cur.fetchall()
+                conn.commit()
+                print("Turma cadastrada com sucesso!")
 
-    def atualizar(self,idTurma,ano,idCurso):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute(
-                "UPDATE Turma SET ano=%s,idCurso=%s WHERE idTurma=%s",
-                (ano,idCurso,idTurma)
-            )
+        except Exception as e:
+            print(f"Erro ao cadastrar turma: {e}")
 
-    def excluir(self,idTurma):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute(
-                "DELETE FROM Turma WHERE idTurma=%s",
-                (idTurma,)
-            )
+        finally:
+            conn.close()
+
+    def read(self):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        t.idTurma,
+                        c.idCurso,
+                        c.nome,
+                        c.cargaHoraria,
+                        t.periodo,
+                        t.ano,
+                        t.horario
+                    FROM Turma t
+                    JOIN Curso c ON t.idCurso = c.idCurso
+                    ORDER BY t.idTurma
+                """)
+                return cursor.fetchall()
+
+        finally:
+            conn.close()
+
+    def update(self, id_turma, periodo, ano, horario):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+
+                cursor.execute("""
+                    UPDATE Turma
+                    SET periodo = %s,
+                        ano = %s,
+                        horario = %s
+                    WHERE idTurma = %s
+                """, (periodo, ano, horario, id_turma))
+
+                if cursor.rowcount == 0:
+                    print("Turma não encontrada!")
+                else:
+                    conn.commit()
+                    print("Turma atualizada com sucesso!")
+
+        except Exception as e:
+            print(f"Erro ao atualizar turma: {e}")
+
+        finally:
+            conn.close()
+
+    def delete(self, id_turma):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    DELETE FROM Turma
+                    WHERE idTurma = %s
+                """, (id_turma,))
+
+                if cursor.rowcount == 0:
+                    print("Turma não encontrada!")
+                else:
+                    conn.commit()
+                    print("Turma deletada com sucesso!")
+
+        except Exception as e:
+            print(f"Erro ao deletar turma: {e}")
+
+        finally:
+            conn.close()
+
+    def find_by_id(self, id_turma):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        t.idTurma,
+                        c.idCurso,
+                        c.nome,
+                        c.cargaHoraria,
+                        t.periodo,
+                        t.ano,
+                        t.horario
+                    FROM Turma t
+                    JOIN Curso c ON t.idCurso = c.idCurso
+                    WHERE t.idTurma = %s
+                """, (id_turma,))
+
+                return cursor.fetchone()
+
+        finally:
+            conn.close()

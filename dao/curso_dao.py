@@ -1,29 +1,103 @@
-from conexao import conectar
+from database import get_connection
 
 class CursoDAO:
 
-    def inserir(self,nome):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute(
-                "INSERT INTO Curso (nome) VALUES (%s)",
-                (nome,)
-            )
+    def create(self, nome, carga):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO Curso (nome, cargaHoraria)
+                    VALUES (%s, %s)
+                """, (nome, carga))
 
-    def listar(self):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute("SELECT * FROM Curso")
-            return cur.fetchall()
+                conn.commit()
+                print("Curso cadastrado com sucesso!")
 
-    def atualizar(self,idCurso,nome):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute(
-                "UPDATE Curso SET nome=%s WHERE idCurso=%s",
-                (nome,idCurso)
-            )
+        except Exception as e:
+            print(f"Erro ao cadastrar curso: {e}")
 
-    def excluir(self,idCurso):
-        with conectar() as con, con.cursor() as cur:
-            cur.execute(
-                "DELETE FROM Curso WHERE idCurso=%s",
-                (idCurso,)
-            )
+        finally:
+            conn.close()
+
+    def read(self):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT
+                        c.idCurso,
+                        c.nome,
+                        c.cargaHoraria,
+                        COALESCE(COUNT(DISTINCT m.idAluno), 0) AS qtd_alunos
+                    FROM Curso c
+                    LEFT JOIN Turma t ON c.idCurso = t.idCurso
+                    LEFT JOIN Matricula m ON t.idTurma = m.idTurma
+                    GROUP BY c.idCurso, c.nome, c.cargaHoraria
+                    ORDER BY c.idCurso
+                """)
+                return cursor.fetchall()
+        finally:
+            conn.close()
+
+    def update(self, id_curso, nome, carga):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE Curso
+                    SET nome = %s,
+                        cargaHoraria = %s
+                    WHERE idCurso = %s
+                """, (nome, carga, id_curso))
+
+                if cursor.rowcount == 0:
+                    print("Curso não encontrado!")
+                else:
+                    conn.commit()
+                    print("Curso atualizado com sucesso!")
+
+        except Exception as e:
+            print(f"Erro ao atualizar curso: {e}")
+
+        finally:
+            conn.close()
+
+    def delete(self, id_curso):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    DELETE FROM Curso
+                    WHERE idCurso = %s
+                """, (id_curso,))
+
+                if cursor.rowcount == 0:
+                    print("Curso não encontrado!")
+                else:
+                    conn.commit()
+                    print("Curso deletado com sucesso!")
+
+        except Exception as e:
+            print(f"Erro ao deletar curso: {e}")
+
+        finally:
+            conn.close()
+
+    def find_by_id(self, id_curso):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        idCurso,
+                        nome,
+                        cargaHoraria
+                    FROM Curso
+                    WHERE idCurso = %s
+                """, (id_curso,))
+
+                return cursor.fetchone()
+
+        finally:
+            conn.close()
